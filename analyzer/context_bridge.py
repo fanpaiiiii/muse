@@ -35,11 +35,14 @@ from analyzer.persona_state import (
 
 
 def get_recent_conversation(limit: int = 10) -> List[Dict]:
-    """从 behavior_log 拉取最近对话"""
+    """从 behavior_log 拉取最近对话（排除 cron 提示）"""
     rows = query(
         """SELECT event_type, content, created_at 
            FROM behavior_log 
            WHERE event_type IN ('message_received', 'message_sent')
+             AND content NOT LIKE '%cron job%'
+             AND content NOT LIKE '%IMPORTANT%'
+             AND content NOT LIKE '[SILENT]%'
            ORDER BY id DESC LIMIT ?""",
         (limit,)
     )

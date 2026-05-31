@@ -183,33 +183,44 @@ def detect_feedback():
     
     逻辑：如果用户在 Muse 发送消息后 30 分钟内回复了，
     记录为「已回复」；否则记录为「已忽略」。
+    幂等：只处理 feedback_history 中未记录的 message_id。
     """
-    from analyzer.persona_state import record_proactive_response
+    from analyzer.persona_state import record_proactive_response, get_state_json
     
-    # 获取最近的 Muse 主动消息
+    # 获取已处理的 message_id 集合
+    existing = get_state_json("feedback_history", [])
+    processed_ids = {h["message_id"] for h in existing if h.get("message_id") is not None}
+    
+    # 获取最近的 Muse 主动消息（排除已处理的）
     muse_msgs = query(
         """SELECT id, sent_at FROM proactive_messages 
            WHERE status = 'sent' AND sent_at IS NOT NULL
-           ORDER BY sent_at DESC LIMIT 5"""
+           ORDER BY sent_at DESC LIMIT 10"""
     )
     
     if not muse_msgs:
         return
     
-    # 获取用户最近的消息
+    # 获取用户最近的真实消息（排除 cron 提示）
     user_msgs = query(
         """SELECT created_at FROM behavior_log 
            WHERE event_type = 'message_received'
-           ORDER BY created_at DESC LIMIT 5"""
+             AND content NOT LIKE '%cron job%'
+             AND content NOT LIKE '%IMPORTANT%'
+           ORDER BY created_at DESC LIMIT 10"""
     )
     
     if not user_msgs:
         return
     
-    # 检查每条 Muse 消息是否有用户回复
+    # 只处理尚未记录的 Muse 消息
+    new_count = 0
     for muse_msg in muse_msgs:
-        muse_time = datetime.fromisoformat(muse_msg["sent_at"])
         msg_id = muse_msg["id"]
+        if msg_id in processed_ids:
+            continue
+            
+        muse_time = datetime.fromisoformat(muse_msg["sent_at"])
         
         # 检查用户是否在 30 分钟内回复
         responded = False
@@ -222,6 +233,10 @@ def detect_feedback():
         
         # 记录反馈
         record_proactive_response(msg_id, responded)
+        new_count += 1
+    
+    if new_count > 0:
+        print(f"反馈检测: 新增 {new_count} 条记录")
 
 
 def main():
