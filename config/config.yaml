@@ -1,5 +1,5 @@
 # Muse Configuration - Two-Tier Architecture
-# 版本: v2.0
+# 版本: v2.1
 
 # === 两级定时架构 ===
 # Tier 1: 每小时分析节点 — 收集感知 → LLM 决策 → 写入消息队列
@@ -20,18 +20,37 @@ analyzer:
   soft_warnings:
     - user_just_active    # 用户刚活跃 <5分钟
     - message_limit       # 今日已发 >=6 条
-    - too_soon            # 距上次 <60 分钟
+    - too_soon            # 距上次 <180 分钟
     - negative_mood       # 负面情绪
     - deep_work           # 深度工作中
     - duplicate           # 重复内容
     - traveling           # 通勤中
 
   # 消息参数
-  max_daily_messages: 6
-  min_interval_minutes: 60
+  max_daily_messages: 4          # 每天最多4条（早上/上午/下午/晚上各1条）
+  min_interval_minutes: 360      # 至少间隔6小时
   user_active_cooldown_minutes: 5
   late_night_start: 23
   late_night_end: 7
+
+# === 时间窗口（只在这些时段发送主动消息）===
+time_windows:
+  - name: "morning"
+    start: "07:00"
+    end: "09:30"
+    priority: "medium"
+  - name: "midday"
+    start: "11:30"
+    end: "13:00"
+    priority: "medium"
+  - name: "afternoon"
+    start: "14:00"
+    end: "16:30"
+    priority: "medium"
+  - name: "evening"
+    start: "20:00"
+    end: "22:00"
+    priority: "medium"
 
 # === 投递配置 ===
 delivery:

@@ -73,10 +73,12 @@ def score_message_interval(minutes_since_last_msg):
     """距上次主动消息间隔 — 扣25分"""
     if minutes_since_last_msg is None:
         return 0, "无历史消息"
-    if minutes_since_last_msg < 30:
-        return 25, f"距上次主动仅 {minutes_since_last_msg:.0f} 分钟"
-    if minutes_since_last_msg < 60:
-        return 15, f"距上次主动 {minutes_since_last_msg:.0f} 分钟，间隔偏短"
+    if minutes_since_last_msg < 180:
+        return 40, f"距上次主动仅 {minutes_since_last_msg:.0f} 分钟（需≥360）"
+    if minutes_since_last_msg < 360:
+        return 25, f"距上次主动 {minutes_since_last_msg:.0f} 分钟，间隔偏短（需≥360）"
+    if minutes_since_last_msg < 480:
+        return 10, f"距上次主动 {minutes_since_last_msg:.0f} 分钟，可再等等"
     return 0, ""
 
 
@@ -170,14 +172,32 @@ def score_traveling(recent_messages):
 
 
 def score_meal_time():
-    """饭点 — 扣5分（轻度）"""
+    """非时间窗口 — 直接阻止"""
     hour = datetime.now().hour
     minute = datetime.now().minute
     t = hour * 60 + minute
-    # 午饭 11:30-13:00, 晚饭 18:00-19:30
-    if (11 * 60 + 30 <= t <= 13 * 60) or (18 * 60 <= t <= 19 * 60 + 30):
-        return 5, f"饭点 {hour}:{minute:02d}"
-    return 0, ""
+    # 加载时间窗口
+    config_path = os.path.join(PROJECT_ROOT, "config", "config.yaml")
+    try:
+        import yaml
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+        windows = config.get("time_windows", [])
+    except Exception:
+        windows = []
+
+    if not windows:
+        return 0, ""
+
+    for w in windows:
+        start_h, start_m = map(int, w["start"].split(":"))
+        end_h, end_m = map(int, w["end"].split(":"))
+        start_t = start_h * 60 + start_m
+        end_t = end_h * 60 + end_m
+        if start_t <= t <= end_t:
+            return 0, ""
+
+    return 30, f"当前 {hour}:{minute:02d} 不在任何时间窗口内"
 
 
 SOFT_CHECKS = [
