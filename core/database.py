@@ -61,6 +61,22 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_time);
     CREATE INDEX IF NOT EXISTS idx_tasks_dedup ON tasks(dedup_key);
 
+    -- 主动消息队列表（Tier 1 写入，Tier 2 读取发送）
+    CREATE TABLE IF NOT EXISTS proactive_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        target_time TEXT NOT NULL,          -- "HH:MM" 发送时间
+        target_date TEXT NOT NULL,          -- "YYYY-MM-DD" 发送日期
+        message TEXT NOT NULL,              -- 要发送的消息
+        reason TEXT,                        -- 决策原因
+        status TEXT DEFAULT 'pending',      -- pending|sent|cancelled|skipped
+        created_at TEXT NOT NULL,           -- 决策创建时间
+        sent_at TEXT                        -- 实际发送时间
+    );
+    CREATE INDEX IF NOT EXISTS idx_pm_status_date 
+        ON proactive_messages(status, target_date);
+    CREATE INDEX IF NOT EXISTS idx_pm_target 
+        ON proactive_messages(target_date, target_time, status);
+
     -- 行为日志表
     CREATE TABLE IF NOT EXISTS behavior_log (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
