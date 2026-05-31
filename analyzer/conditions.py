@@ -78,15 +78,13 @@ def score_user_just_active(minutes_since_active):
 
 
 def score_message_interval(minutes_since_last_msg):
-    """距上次主动消息间隔 — 扣25分"""
+    """距上次主动消息间隔"""
     if minutes_since_last_msg is None:
         return 0, "无历史消息"
-    if minutes_since_last_msg < 180:
-        return 40, f"距上次主动仅 {minutes_since_last_msg:.0f} 分钟（需≥360）"
-    if minutes_since_last_msg < 360:
-        return 25, f"距上次主动 {minutes_since_last_msg:.0f} 分钟，间隔偏短（需≥360）"
-    if minutes_since_last_msg < 480:
-        return 10, f"距上次主动 {minutes_since_last_msg:.0f} 分钟，可再等等"
+    if minutes_since_last_msg < 30:
+        return 30, f"距上次仅 {minutes_since_last_msg:.0f} 分钟"
+    if minutes_since_last_msg < 50:
+        return 10, f"距上次 {minutes_since_last_msg:.0f} 分钟，间隔偏短"
     return 0, ""
 
 
