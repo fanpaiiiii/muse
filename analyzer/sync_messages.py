@@ -39,7 +39,7 @@ def get_hermes_conn():
 def get_last_sync_time():
     """获取上次同步时间"""
     rows = query(
-        "SELECT value FROM behavior_log WHERE event_type = 'sync_marker' ORDER BY id DESC LIMIT 1"
+        "SELECT content FROM behavior_log WHERE event_type = 'sync_marker' ORDER BY id DESC LIMIT 1"
     )
     if rows:
         try:
