@@ -235,6 +235,11 @@ def main():
         result = get_stats()
     else:
         result = sync_messages(hours=args.hours, full=args.full)
+        # 同步后检测反馈（闭环）
+        try:
+            detect_feedback()
+        except Exception as e:
+            result["feedback_error"] = str(e)
 
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

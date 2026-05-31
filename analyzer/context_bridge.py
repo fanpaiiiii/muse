@@ -229,7 +229,29 @@ def build_full_context() -> str:
     git_activity = get_recent_git_activity()
     git_str = ("\n## 最近开发活动\n" + git_activity) if git_activity else ""
     
-    # 7. 组装
+    # 7. 今日已发送消息（防幻觉）
+    from datetime import datetime as _dt
+    today = _dt.now().strftime("%Y-%m-%d")
+    sent_rows = query(
+        "SELECT target_time, message FROM proactive_messages WHERE target_date = ? AND status = 'sent' ORDER BY sent_at",
+        (today,)
+    )
+    if sent_rows:
+        sent_lines = [f"- {r['target_time']}: {r['message'][:60]}" for r in sent_rows[-5:]]
+        sent_str = "\n## 今日已发送消息（不可重复）\n" + "\n".join(sent_lines)
+    else:
+        sent_str = ""
+    
+    # 8. 反馈闭环数据
+    from analyzer.persona_state import get_engagement_score, get_consecutive_ignores
+    engagement = get_engagement_score()
+    ignores = get_consecutive_ignores()
+    if engagement != 0:
+        feedback_str = f"\n## 用户反馈信号\n参与度分数: {engagement:+d}，连续忽略: {ignores}次"
+    else:
+        feedback_str = ""
+    
+    # 9. 组装
     full_context = f"""{persona_ctx}
 
 ## 最近对话（被动）
@@ -238,6 +260,8 @@ def build_full_context() -> str:
 ## 话题追踪
 最近话题：{topic_str}
 {git_str}
+{sent_str}
+{feedback_str}
 
 ### 一致性规则
 - 你刚才和用户聊了什么，要接着聊，不要突然换话题

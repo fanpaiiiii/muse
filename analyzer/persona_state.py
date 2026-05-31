@@ -386,6 +386,7 @@ def generate_persona_context() -> str:
     2. 知道用户的情绪（语气适配）
     3. 知道自己之前说了什么（避免重复）
     4. 知道该用什么风格（一致性）
+    5. 知道用户反馈如何（动态调整频率）
     """
     init_persona_state_table()
     
@@ -394,6 +395,11 @@ def generate_persona_context() -> str:
     memories = get_memories_summary()
     recent_msgs = get_recent_messages_summary()
     style = get_style_suggestion()
+    
+    # 反馈闭环数据
+    engagement = get_engagement_score()
+    ignores = get_consecutive_ignores()
+    days = get_days_since_first_seen()
     
     mood_names = {
         "playful": "开心/调皮",
@@ -405,10 +411,24 @@ def generate_persona_context() -> str:
         "neutral": "平静",
     }
     
+    feedback_line = ""
+    if engagement > 0:
+        feedback_line = f"\n用户参与度: +{engagement}分（回复积极，可多互动）"
+    elif engagement < 0:
+        feedback_line = f"\n用户参与度: {engagement}分（连续忽略{ignores}次，应降频）"
+    else:
+        feedback_line = "\n用户参与度: 中性（无足够数据）"
+    
+    activation_line = f"\n使用天数: {days}天"
+    if days < 7:
+        activation_line += "（渐进式激活：仅推任务场景）"
+    else:
+        activation_line += "（已激活：可推社交场景）"
+    
     context = f"""## 人格状态（实时）
 
 当前用户情绪: {mood_names.get(mood, mood)}
-推荐对话风格: {style}
+推荐对话风格: {style}{feedback_line}{activation_line}
 
 {topics}
 
