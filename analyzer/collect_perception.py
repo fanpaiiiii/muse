@@ -8,6 +8,14 @@
     python collect_perception.py --compact      # 紧凑格式
     python collect_perception.py --json         # 纯 JSON（无额外文本）
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import json
 import sys
 import os

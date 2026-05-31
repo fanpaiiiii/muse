@@ -9,6 +9,14 @@
     python sync_messages.py --full         # 全量同步（首次使用）
     python sync_messages.py --stats        # 查看同步统计
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import json
 import os
 import sys

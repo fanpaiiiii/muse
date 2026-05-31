@@ -10,6 +10,14 @@
     python check_pending.py --mark-cancel ID # 标记消息取消
     python check_pending.py --stats      # 输出统计信息
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import json
 import sys
 import os

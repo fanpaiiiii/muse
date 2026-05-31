@@ -6,6 +6,14 @@
 - 共享梗/内部笑话（增强人格真实感）
 - 最近的主动/被动消息（避免割裂）
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import json
 import os
 import sys

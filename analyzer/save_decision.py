@@ -7,6 +7,14 @@
     python save_decision.py --time "14:30" --message "消息内容" --reason "原因"
     python save_decision.py --skip --reason "不适合主动对话的原因"
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import json
 import sys
 import os

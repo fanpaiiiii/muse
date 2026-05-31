@@ -8,6 +8,14 @@
 5. 时间决策
 6. 输出结构化决策（LLM 只做微调，不做从零决策）
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import json
 import os
 import sys

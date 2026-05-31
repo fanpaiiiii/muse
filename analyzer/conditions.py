@@ -3,6 +3,14 @@
 硬条件: 任一命中 → 直接阻止
 软条件: 每项扣分，总分 < 阈值 → 阻止
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import json
 import os
 import sys

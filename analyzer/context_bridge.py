@@ -6,6 +6,14 @@
 3. 组装成完整的上下文注入 Cron prompt
 4. 确保被动/主动对话的人格一致
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import json
 import os
 import sys

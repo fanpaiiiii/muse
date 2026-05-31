@@ -2,6 +2,14 @@
 
 LLM 不需要从零编消息，而是从模板池中选择 + 微调。
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import random
 from datetime import datetime
 

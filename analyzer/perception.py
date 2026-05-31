@@ -2,6 +2,14 @@
 
 输出结构化 JSON，供 Tier 1 LLM 分析使用。
 """
+import os
+os.environ["TZ"] = "Asia/Shanghai"
+try:
+    import time
+    time.tzset()
+except (ImportError, AttributeError):
+    pass
+
 import json
 import os
 import sys
