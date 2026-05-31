@@ -45,6 +45,19 @@ def main():
         },
     }
 
+    # 始终包含今日已发送消息列表（防幻觉）
+    from datetime import datetime
+    from core.database import query as db_query
+    today = datetime.now().strftime("%Y-%m-%d")
+    sent_rows = db_query(
+        "SELECT id, target_time, message, reason, sent_at FROM proactive_messages WHERE target_date = ? AND status = 'sent' ORDER BY sent_at",
+        (today,)
+    )
+    output["today_sent"] = [
+        {"id": r["id"], "time": r["target_time"], "msg": r["message"][:80], "sent_at": r["sent_at"]}
+        for r in sent_rows
+    ]
+
     # 仅在应该行动时包含原始数据
     if result["should_act"]:
         raw = result.get("raw_data", {})
