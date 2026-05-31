@@ -70,6 +70,71 @@ def get_conversation_summary(messages: List[Dict]) -> str:
     return "\n".join(lines)
 
 
+def get_hermes_session_topics() -> List[str]:
+    """从 Hermes session 历史拉取最近话题关键词（对话记忆注入）"""
+    import sqlite3
+    state_db = os.path.expanduser("~/.hermes/state.db")
+    if not os.path.exists(state_db):
+        return []
+    
+    try:
+        conn = sqlite3.connect(state_db)
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("""
+            SELECT content FROM messages 
+            WHERE role = 'user' 
+            ORDER BY id DESC LIMIT 20
+        """).fetchall()
+        conn.close()
+        
+        # 提取最近话题
+        topics = []
+        keyword_map = {
+            "假发": "假发业务", "wigs": "假发业务",
+            "宠物": "宠物用品", "pet": "宠物用品",
+            "阿里": "阿里巴巴", "报价": "报价单",
+            "部署": "服务器部署", "deploy": "服务器部署",
+            "bug": "代码调试", "微信": "微信集成",
+            "Telegram": "Telegram", "飞书": "飞书集成",
+            "openclaw": "OpenClaw", "muse": "Muse系统",
+            "图片": "图片生成", "image": "图片生成",
+        }
+        for row in rows:
+            text = (row["content"] or "").lower()
+            for kw, topic in keyword_map.items():
+                if kw.lower() in text and topic not in topics:
+                    topics.append(topic)
+        return topics[:5]
+    except Exception:
+        return []
+
+
+def get_recent_git_activity() -> str:
+    """获取最近的 git 活动摘要"""
+    import subprocess
+    projects_dir = os.path.expanduser("~/projects")
+    if not os.path.isdir(projects_dir):
+        return ""
+    
+    activities = []
+    try:
+        for item in os.listdir(projects_dir)[:5]:
+            git_dir = os.path.join(projects_dir, item, ".git")
+            if os.path.isdir(git_dir):
+                result = subprocess.run(
+                    ["git", "log", "--oneline", "-3", "--since=2 days ago"],
+                    cwd=os.path.join(projects_dir, item),
+                    capture_output=True, text=True, timeout=5
+                )
+                if result.stdout.strip():
+                    lines = result.stdout.strip().split(chr(10))
+                    activities.append(f"{item}: {lines[0]}")
+    except Exception:
+        pass
+    
+    return chr(10).join(activities[:3]) if activities else ""
+
+
 def extract_topics_from_messages(messages: List[Dict]) -> List[str]:
     """从对话中提取话题关键词"""
     topics = []
@@ -145,18 +210,34 @@ def build_full_context() -> str:
     # 1. 更新人格状态
     update_persona_from_conversation()
     
-    # 2. 获取人格状态上下文
+    # 2. 获取人格状态上下文（含反馈信号）
     persona_ctx = generate_persona_context()
     
     # 3. 获取对话摘要
     messages = get_recent_conversation(8)
     conv_summary = get_conversation_summary(messages)
     
-    # 4. 组装
+    # 4. 话题提取（从 behavior_log）
+    topics = extract_topics_from_messages(messages)
+    
+    # 5. Hermes session 历史话题（对话记忆注入）
+    session_topics = get_hermes_session_topics()
+    all_topics = list(dict.fromkeys(topics + session_topics))  # 去重保序
+    topic_str = "，".join(all_topics) if all_topics else "无明显话题"
+    
+    # 6. 最近 git 活动（感知层加厚）
+    git_activity = get_recent_git_activity()
+    git_str = ("\n## 最近开发活动\n" + git_activity) if git_activity else ""
+    
+    # 7. 组装
     full_context = f"""{persona_ctx}
 
 ## 最近对话（被动）
 {conv_summary}
+
+## 话题追踪
+最近话题：{topic_str}
+{git_str}
 
 ### 一致性规则
 - 你刚才和用户聊了什么，要接着聊，不要突然换话题
@@ -164,6 +245,7 @@ def build_full_context() -> str:
 - 如果用户刚才很开心，保持轻松的语气
 - 如果用户刚才在忙正事，不要发闲聊
 - 避免重复：不要说最近已经说过的话
+- 主动消息时优先提及最近的话题，让对话有连贯性
 """
     return full_context
 

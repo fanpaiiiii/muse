@@ -87,6 +87,81 @@ def set_state_json(key: str, value):
 MAX_TOPICS = 10  # 保留最近10个话题
 
 
+# ============================================================
+# 反馈闭环追踪
+# ============================================================
+
+def record_proactive_response(message_id: int, responded: bool):
+    """记录用户对主动消息的反馈"""
+    history = get_state_json("feedback_history", [])
+    history.append({
+        "message_id": message_id,
+        "responded": responded,
+        "time": datetime.now().isoformat(),
+    })
+    history = history[-20:]
+    set_state_json("feedback_history", history)
+
+
+def get_engagement_score() -> int:
+    """根据反馈历史计算参与度分数（正=加分，负=减分）"""
+    history = get_state_json("feedback_history", [])
+    if not history:
+        return 0
+    recent = history[-10:]
+    responded = sum(1 for h in recent if h.get("responded"))
+    total = len(recent)
+    if total == 0:
+        return 0
+    rate = responded / total
+    consecutive_ignores = 0
+    for h in reversed(history):
+        if h.get("responded"):
+            break
+        consecutive_ignores += 1
+    if consecutive_ignores >= 5:
+        return -30
+    elif consecutive_ignores >= 3:
+        return -20
+    elif rate >= 0.7:
+        return +15
+    elif rate >= 0.4:
+        return +5
+    elif rate < 0.2:
+        return -10
+    return 0
+
+
+def get_consecutive_ignores() -> int:
+    """获取连续忽略次数"""
+    history = get_state_json("feedback_history", [])
+    count = 0
+    for h in reversed(history):
+        if h.get("responded"):
+            break
+        count += 1
+    return count
+
+
+def get_first_seen_date() -> str:
+    """获取首次使用日期（渐进式激活）"""
+    val = get_state("first_seen_date")
+    if not val:
+        val = datetime.now().strftime("%Y-%m-%d")
+        set_state("first_seen_date", val)
+    return val
+
+
+def get_days_since_first_seen() -> int:
+    """获取使用天数"""
+    first = get_first_seen_date()
+    try:
+        first_dt = datetime.strptime(first, "%Y-%m-%d")
+        return (datetime.now() - first_dt).days
+    except ValueError:
+        return 0
+
+
 def record_topic(topic: str, source: str = "passive"):
     """记录一个话题
 

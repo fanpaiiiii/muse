@@ -178,6 +178,52 @@ def get_stats():
     }
 
 
+def detect_feedback():
+    """检测用户对 Muse 主动消息的反馈
+    
+    逻辑：如果用户在 Muse 发送消息后 30 分钟内回复了，
+    记录为「已回复」；否则记录为「已忽略」。
+    """
+    from analyzer.persona_state import record_proactive_response
+    
+    # 获取最近的 Muse 主动消息
+    muse_msgs = query(
+        """SELECT id, sent_at FROM proactive_messages 
+           WHERE status = 'sent' AND sent_at IS NOT NULL
+           ORDER BY sent_at DESC LIMIT 5"""
+    )
+    
+    if not muse_msgs:
+        return
+    
+    # 获取用户最近的消息
+    user_msgs = query(
+        """SELECT created_at FROM behavior_log 
+           WHERE event_type = 'message_received'
+           ORDER BY created_at DESC LIMIT 5"""
+    )
+    
+    if not user_msgs:
+        return
+    
+    # 检查每条 Muse 消息是否有用户回复
+    for muse_msg in muse_msgs:
+        muse_time = datetime.fromisoformat(muse_msg["sent_at"])
+        msg_id = muse_msg["id"]
+        
+        # 检查用户是否在 30 分钟内回复
+        responded = False
+        for user_msg in user_msgs:
+            user_time = datetime.fromisoformat(user_msg["created_at"])
+            diff_minutes = (user_time - muse_time).total_seconds() / 60
+            if 0 < diff_minutes <= 30:
+                responded = True
+                break
+        
+        # 记录反馈
+        record_proactive_response(msg_id, responded)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Muse 消息同步器")
     parser.add_argument("--hours", type=int, default=1, help="同步最近N小时")

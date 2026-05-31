@@ -177,6 +177,26 @@ def score_traveling(recent_messages):
     return 0, ""
 
 
+def score_user_engagement():
+    """用户参与度反馈 — 根据历史互动动态调整"""
+    from analyzer.persona_state import get_engagement_score
+    score = get_engagement_score()
+    if score > 0:
+        return -score, f"用户参与度高，奖励 {score} 分"  # 负数=加分
+    elif score < 0:
+        return abs(score), f"用户参与度低/连续忽略，惩罚 {abs(score)} 分"
+    return 0, ""
+
+
+def score_social_before_activation():
+    """渐进式激活 — 使用不满7天不推社交场景"""
+    from analyzer.persona_state import get_days_since_first_seen
+    days = get_days_since_first_seen()
+    if days < 7:
+        return 30, f"使用仅 {days} 天，暂不推社交场景（需满7天）"
+    return 0, ""
+
+
 def score_meal_time():
     """非时间窗口 — 直接阻止"""
     hour = datetime.now().hour
@@ -213,6 +233,8 @@ SOFT_CHECKS = [
     ("deep_work", score_deep_work),
     ("duplicate", score_duplicate),
     ("traveling", score_traveling),
+    ("user_engagement", score_user_engagement),
+    ("social_activation", score_social_before_activation),
     ("meal_time", score_meal_time),
 ]
 
