@@ -21,6 +21,8 @@ from core.database import init_db, query
 from analyzer.perception import collect_all
 from analyzer.conditions import evaluate
 from analyzer.content_templates import decide_scene, pick_template
+from analyzer.context_bridge import build_full_context, update_persona_from_conversation
+from analyzer.persona_state import record_topic, record_recent_message, get_current_mood, generate_persona_context
 
 
 # ============================================================
@@ -72,6 +74,13 @@ def decide_send_time(perception, scene_priority):
 def analyze():
     """执行完整分析流程
 
+    人格一致性流程:
+    1. 更新人格状态（从最近对话）
+    2. 收集感知数据
+    3. 条件评估
+    4. 场景选择（考虑人格状态）
+    5. 输出含人格上下文的决策
+
     Returns:
         dict: {
             "should_act": bool,
@@ -88,6 +97,9 @@ def analyze():
     perception = collect_all()
     activity = perception.get("user_activity", {})
     messages = perception.get("recent_messages", [])
+
+    # 1.5 更新人格状态
+    update_persona_from_conversation()
 
     # 2. 条件评估
     minutes_since_active = activity.get("minutes_since_active")
@@ -156,9 +168,13 @@ def analyze():
     # 6. 决定发送时间
     send_time = decide_send_time(perception, template_result["priority"])
 
-    # 7. 组装结果
-    deduction_summary = "、".join([d["reason"] for d in condition["deductions"]]) if condition["deductions"] else "无"
+    send_time = decide_send_time(perception, template_result["priority"])
+    # 7. 记录到人格状态（避免重复）
+    record_recent_message(template_result["message"], "proactive")
+    record_topic(template_result["message"][:30], source="proactive")
 
+    # 8. 组装结果
+    deduction_summary = "、".join([d["reason"] for d in condition["deductions"]]) if condition["deductions"] else "无"
     return {
         "should_act": True,
         "score": condition["score"],
@@ -167,6 +183,7 @@ def analyze():
         "message": template_result["message"],
         "send_time": send_time,
         "reason": f"场景: {template_result['description']}，优先级: {template_result['priority']}",
+        "persona_context": generate_persona_context(),
         "raw_data": {"perception": perception, "condition": condition},
     }
 
