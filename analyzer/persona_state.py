@@ -222,22 +222,57 @@ MOOD_KEYWORDS = {
 
 
 def detect_user_mood(recent_messages: List[Dict]) -> str:
-    """从最近消息检测用户情绪"""
+    """从最近消息检测用户情绪
+    
+    策略：
+    1. 优先从用户消息中提取关键词
+    2. 回退：从助手消息推断对话氛围
+    3. 回退：基于时间段的默认情绪
+    4. 惯性：保持上一次的情绪（避免频繁跳变）
+    """
     mood_scores = {mood: 0 for mood in MOOD_KEYWORDS}
+    user_msg_count = 0
     
     for msg in recent_messages:
-        if msg.get("role") != "user":
-            continue
         text = msg.get("text", "")
+        if not text:
+            continue
+        
+        if msg.get("role") == "user":
+            user_msg_count += 1
+        
+        # 用户消息权重 x2，助手消息权重 x1
+        weight = 2 if msg.get("role") == "user" else 1
         for mood, keywords in MOOD_KEYWORDS.items():
             for kw in keywords:
                 if kw in text:
-                    mood_scores[mood] += 1
+                    mood_scores[mood] += weight
     
-    if not any(mood_scores.values()):
-        return "neutral"
+    # 有匹配结果
+    if any(mood_scores.values()):
+        return max(mood_scores, key=lambda k: mood_scores[k])
     
-    return max(mood_scores, key=mood_scores.get)
+    # 回退1：基于时间段
+    hour = datetime.now().hour
+    if 6 <= hour < 9:
+        return "neutral"      # 早晨：平静
+    elif 9 <= hour < 12:
+        return "focused"      # 上午：专注
+    elif 12 <= hour < 14:
+        return "neutral"      # 午间：平静
+    elif 14 <= hour < 18:
+        return "focused"      # 下午：专注
+    elif 18 <= hour < 22:
+        return "playful"      # 傍晚：轻松
+    else:
+        return "tired"        # 深夜：疲惫
+    
+    # 回退2：情绪惯性（保持上次）
+    last_mood = get_state("user_mood")
+    if last_mood and last_mood != "unknown":
+        return last_mood
+    
+    return "neutral"
 
 
 def update_mood(recent_messages: List[Dict]):
