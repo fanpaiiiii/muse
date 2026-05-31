@@ -1,0 +1,77 @@
+# Proactive Dialogue System - Configuration
+# 版本: v1.0
+
+# === 调度节点配置 ===
+nodes:
+  N1: { hour: 7,  name: "morning_brief",    type: "memory_recall",  weight: 0.6, cooldown: 720 }
+  N2: { hour: 9,  name: "task_push",         type: "task_reminder",  weight: 0.9, cooldown: 360 }
+  N3: { hour: 10, name: "break_check",       type: "wellness",       weight: 0.5, cooldown: 600 }
+  N4: { hour: 11, name: "midday_review",     type: "task_reminder",  weight: 0.7, cooldown: 480 }
+  N5: { hour: 12, name: "lunch_casual",      type: "social",         weight: 0.4, cooldown: 600 }
+  N6: { hour: 14, name: "afternoon_push",    type: "task_reminder",  weight: 0.8, cooldown: 360 }
+  N7: { hour: 17, name: "endday_wrapup",     type: "summary",        weight: 0.7, cooldown: 480 }
+  N8: { hour: 20, name: "evening_review",    type: "reflection",     weight: 0.6, cooldown: 600 }
+  N9: { hour: 23, name: "night_brief",       type: "summary",        weight: 0.5, cooldown: 720 }
+
+# === 角色配置 ===
+character:
+  id: "sparkle"          # 角色ID (sparkle/...)
+  # 新增角色只需:
+  # 1. 在 personality/characters/ 下新建 xxx.py
+  # 2. 实现 get_xxx_config() 返回与 sparkle.py 相同格式的 dict
+  # 3. 在 personality/character_manager.py 的 REGISTERED_CHARACTERS 中注册
+
+# === 人格配置 ===
+personality:
+  name: "Hermes"
+  role: "数字助手"
+  style: "calm_witty"  # calm_witty | professional | casual | formal
+  tone: "简洁专业，偶尔幽默，避免过度热情"
+  # 话题禁忌
+  forbidden_topics: ["隐私", "政治敏感", "宗教争议"]
+  # 互动约束
+  max_daily_messages: 8       # 每天最多主动消息数
+  min_interval_minutes: 60    # 两次主动消息最小间隔
+  user_active_cooldown: 5     # 用户活跃后冷却（分钟）
+
+# === 投递配置 ===
+delivery:
+  max_retries: 3
+  retry_delay_seconds: 30
+  platforms:
+    telegram:
+      enabled: true
+      home_channel: "telegram"
+    feishu:
+      enabled: true
+      home_channel: "feishu"
+
+# === 感知配置 ===
+perception:
+  task_keywords:
+    - "明天"
+    - "下周"
+    - "记得"
+    - "提醒我"
+    - "要做的"
+    - "待办"
+    - "deadline"
+    - "ddl"
+    - "赶紧"
+    - "尽快"
+    - "完成"
+    - "check"
+  activity:
+    active_threshold_minutes: 5   # 最近N分钟内有消息视为活跃
+    idle_threshold_minutes: 120   # N分钟无消息视为空闲
+    deep_idle_threshold_minutes: 480  # N分钟无消息视为深度空闲
+
+# === 去重配置 ===
+dedup:
+  window_hours: 24      # 同一 dedup_key 在此时间内不重复
+  cleanup_days: 7       # 超过N天的去重记录自动清理
+
+# === 数据库配置 ===
+database:
+  path: "data/proactive.db"
+  wal_mode: true
